@@ -16,7 +16,7 @@
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
   
-    <link rel="icon" href="/img/github.png">
+    <link rel="icon" href="/img/favicon.ico">
   
   <script src="/style.js"></script>
   
@@ -65,6 +65,9 @@
             
     			
             
+    			
+    			<a class="js-smart-menu" data-idx="2" href="javascript:void(0)">@我</a>
+    			
     			
             
 		</nav>
@@ -149,23 +152,90 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h1 id="h"><a href="#h" class="headerlink" title="h"></a>h</h1><p>代码：</p>
-<p><code>asd</code></p>
+        <!-- # CLR运行时细节 - Method Descriptor -->
+<h2 id="方法描述符-MethodDesc"><a href="#方法描述符-MethodDesc" class="headerlink" title="方法描述符:MethodDesc"></a>方法描述符:MethodDesc</h2><ul>
+<li>运行时用来描述类型的托管方法,它保存在方法描述桶(MethodDescChunk)内;</li>
+<li>方法描述符保存了方法在运行时的一些重要信息:<ul>
+<li>是否JIT编译;</li>
+<li>是否有方法表槽(决定了方法入口是跟在方法描述符(MethodDesc)后还是在方法表(MethodTable)后面);</li>
+<li>距离MethodDescChunk的索引(chunkIndex);</li>
+<li>Token的末位(这个在编译期确定了);</li>
+<li>方法的一些标识比如是否静态 非内联等;</li>
+<li>方法表槽(slot number);</li>
+<li>以及最重要的方法入口(entrypoint);</li>
+</ul>
+</li>
+</ul>
 <blockquote>
-<h2 id="asd"><a href="#asd" class="headerlink" title="asd"></a>asd</h2><p>asd<br>asd<br>asd</p>
+<p>官方的描述:<br>MethodDesc (method descriptor) is the internal representation of a managed method. It serves several purposes:  </p>
+<ul>
+<li>Provides a unique method handle, usable throughout the runtime. For normal methods, the MethodDesc is a unique handle for a triplet.</li>
+<li>Caches frequently used information that is expensive to compute from metadata (e.g. whether the method is static).</li>
+<li>Captures the runtime state of the method (e.g. whether the code has been generated for the method already).</li>
+<li>Owns the entry point of the method.</li>
+</ul>
 </blockquote>
+<p><strong>先看下Demo C# MethodDesc.cs 代码:</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div><div class="line">86</div><div class="line">87</div><div class="line">88</div><div class="line">89</div><div class="line">90</div><div class="line">91</div><div class="line">92</div><div class="line">93</div><div class="line">94</div><div class="line">95</div><div class="line">96</div><div class="line">97</div><div class="line">98</div><div class="line">99</div><div class="line">100</div><div class="line">101</div><div class="line">102</div><div class="line">103</div><div class="line">104</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">using</span> System;</div><div class="line"><span class="keyword">using</span> System.Runtime.CompilerServices;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> Program</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">Main</span><span class="params">(<span class="built_in">string</span>[] args)</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MethodDesc demo"</span>);</div><div class="line">		Console.ReadLine();</div><div class="line"></div><div class="line">		MDChlidClass cc = <span class="keyword">new</span> MDChlidClass();</div><div class="line">		cc.VirtualFun1();</div><div class="line">		cc.VirtualFun2();</div><div class="line">		cc.IFun1();</div><div class="line">		cc.IFun2();</div><div class="line">		cc.InstanceFun1();</div><div class="line">		cc.InstanceFun2();</div><div class="line">		MDChlidClass.StaticFun1();</div><div class="line"></div><div class="line">		Console.ReadLine();</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> MDBaseClass</div><div class="line">&#123;</div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">VirtualFun1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDBaseClass VirtualFun1"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">VirtualFun2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDBaseClass VirtualFun2"</span>);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> MDChlidClass : MDBaseClass, IFoo</div><div class="line">&#123;</div><div class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> TempInt = <span class="number">0</span>;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> override <span class="keyword">void</span> <span class="title">VirtualFun1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass VirtualFun1"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> override <span class="keyword">void</span> <span class="title">VirtualFun2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass VirtualFun2"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">IFun1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass IFun1"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">IFun2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass IFun2"</span>);</div><div class="line">	&#125;</div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">InstanceFun1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass InstanceFun1"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">InstanceFun2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass InstanceFun2"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">StaticFun1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"MDChlidClass StaticFun1"</span>);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> BaseClassA</div><div class="line">&#123;</div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">VirtualFun1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"BaseClassA VirtualFun1"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	[MethodImpl(MethodImplOptions.NoInlining)]</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">VirtualFun2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"BaseClassA VirtualFun2"</span>);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> interface IFoo</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">void</span> <span class="title">IFun1</span><span class="params">()</span></span>;</div><div class="line">	<span class="function"><span class="keyword">void</span> <span class="title">IFun2</span><span class="params">()</span></span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
 <ul>
-<li>1</li>
-<li>2</li>
-<li>3</li>
+<li>编译代码:</li>
 </ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">%windir%\Microsoft.NET\Framework\v2.0.50727\csc.exe /debug /target:exe /out:e:\temp\MethodDesc_2.0.exe e:\temp\MethodDesc.cs</div><div class="line">pause</div></pre></td></tr></table></figure>
 <ul>
-<li>Lorem ipsum dolor sit amet, consectetuer adipiscing elit.<br>Aliquam hendrerit mi posuere lectus. Vestibulum enim wisi,<br>viverra nec, fringilla in, laoreet vitae, risus.</li>
-<li>Donec sit amet nisl. Aliquam semper ipsum sit amet velit.<br>Suspendisse id sem consectetuer libero luctus adipiscing.</li>
+<li><p>运行 MethodDesc_2.0.exe </p>
+</li>
+<li><p>启动windbg 加载SOS </p>
+</li>
+<li><p>查找对应的模块：<br><code>!Name2EE *!MethodDesc_2.0.exe</code></p>
+</li>
 </ul>
-<p>Use the <code>printf()</code> function.</p>
-<p>asd<br><img src="/img/01-Name2EE.png" alt="" title="Optional title"><br>sad</p>
-<p><img src="/img/01-Name2EE.png" title="图片名称" align="left"></p>
+<p><img src="/img/01MD/01.png" alt="" title="Name2EE Module"></p>
+<ul>
+<li>根据模块查找方法表:<br><code>!DumpModule -mt 00af2c5c</code></li>
+</ul>
+<p><img src="/img/01MD/02.png" alt="" title="Module MethodTable"></p>
+<ul>
+<li>通过MDChlidClass方法表地址查看其EEClass 查找方法描述桶在EEClass偏移40h的位置(64位的话偏移60h 因为标记位使用不变 所有地址类型由4字节变成8字节):</li>
+</ul>
+<p><code>!DumpMT -md 00af31e4</code></p>
+<p><img src="/img/01MD/03.png" alt="" title="MethodTable EEClass MethodDescChunk"></p>
+<ul>
+<li>通过方法桶的地址<code>00af3180</code>观察其下方法描述符：</li>
+</ul>
+<p><img src="/img/01MD/04.png" alt="" title="MethodDescChunk MethodDesc"></p>
+<ul>
+<li>可以看到方法描述桶的第一个4字节(64位8字节)是方法表(MethodTable)的地址<br>可以看到MDChlidClass的方法描述符(MD)</li>
+<li><strong>VirtualFun1</strong> 方法描述符地址:<code>00af3190</code> 其内容:<code>00000008 20000004</code> 第一个<code>00</code>代表方法入口在方法表(MT)后面以及还没jit编译,第二个<code>00</code>代表距方法描述桶(MethodDescChunk)的索引(便于找到桶的起始位置),后面的<code>0008</code>是方法的token末位 在编译成IL时确定,可以通过ildasm查看 MethodDesc_2.0.exe 文件,这个token是在编译期程序集内自增的,也就是在运行时并不是唯一的接下来的<code>2000</code>代表方法非内联,<code>0004</code>代表方法表槽slot number 也就是方法入口(entrypoint)在方法表(MT)后的索引(索引从0开始 一般来说前4个方法都是从Object继承下来的4个虚方法 除了接口类型),方法入口:00afc075</li>
+</ul>
+<p><img src="/img/01MD/05.png" alt="" title="ildasm token"></p>
+<ul>
+<li><strong>VirtualFun2</strong> 方法描述符地址:<code>00af3198</code> 其内容:<code>00020009 20000005</code> 依旧是没jit编译,方法入口在方法表后,token:0009,非内联,slot number:0005,方法入口:00afc079</li>
+<li><strong>IFun1</strong> 方法描述符地址:<code>00af31a0</code> 其内容:<code>0004000a 20000006</code> 依旧是没jit编译,方法入口在方法表后,token:000a,非内联,slot number:0006,方法入口:00afc07d</li>
+<li><strong>IFun2</strong> 方法描述符地址:<code>00af31a8</code> 其内容:<code>0006000b 20000007</code> 依旧是没jit编译,方法入口在方法表后,token:000b,非内联,slot number:0007,方法入口:00afc081</li>
+<li><strong>InstanceFun1</strong> 方法描述符地址:<code>00af31b0</code> 其内容:<code>4008000c 2000000a 00afc085</code> ‘40’这位(bit)代表方法入口(slot)是跟在方法描述符(MD)后面的并非在方法表(MT)后面,依旧是没jit编译,方法入口在方法表后,token:000c,非内联,slot number:000a(这里的slot number依然有值,但值是大于等方法表的slot长度的),方法入口:00afc085 </li>
+<li><strong>InstanceFun2</strong> 方法描述符地址:<code>00af31bc</code> 其内容:<code>400b000d 2000000b 00afc089</code> 依旧是没jit编译,方法入口在方法描述符(MD)后,token:000d,非内联,slot number:000b,方法入口:00afc089</li>
+<li><strong>StaticFun1</strong> 方法描述符地址:<code>00af31c8</code> 其内容:<code>400b000e 2020000c 00afc08d</code> 依旧是没jit编译,方法入口在方法描述符(MD)后,token:000e,<code>2020</code>非内联 并且静态,slot number:000c,方法入口:00afc08d</li>
+<li><strong>.ctor</strong> 实例构造方法 方法描述符地址:<code>00af31d4</code> 其内容:<code>0011000f 00000008</code> 依旧是没jit编译,方法入口在方法表后,token:000f,slot number:0008,方法入口:00afc091</li>
+<li><strong>.cctor</strong> 静态构造方法 方法描述符地址:<code>00af31dc</code> 其内容:<code>00130010 00200009</code> 依旧是没jit编译,方法入口在方法表后,token:0010,静态的:0020,slot number:0009,方法入口:00afc095</li>
+</ul>
+<p><strong>可以看到所有的虚方法(继承或者实现接口)以及构造器方法(实例或者静态)的方法入口(slot)都是在方法表后面的,而其他实例方法和静态方法的方法入口(slot)是跟在方法描述符(MD)后面的</strong></p>
+<blockquote>
+<p><strong>这里引用下CLR文档的一段:</strong><br>Each MethodDesc has a slot, which contains the entry point of the method. The slot and entry point must exist for all methods, even the ones that never run like abstract methods. There are multiple places in the runtime that depend on the 1:1 mapping between entry points and MethodDescs, making this relationship an invariant.<br>The slot is either in MethodTable or in MethodDesc itself. The location of the slot is determined by mdcHasNonVtableSlot bit on MethodDesc.<br>The slot is stored in MethodTable for methods that require efficient lookup via slot index, e.g. virtual methods or methods on generic types. The MethodDesc contains the slot index to allow fast lookup of the entry point in this case.</p>
+</blockquote>
+<p>接下来让 MethodDesc_2.0.exe 继续执行,并回车跳过第一个<code>ReadLine()</code>,再中断到调试器,观察MDChlidClass的方法表<code>00af31e4</code>(MT)和其方法描述桶<code>00af3180</code>(MDC)</p>
+<p><img src="/img/01MD/06.png" alt="" title="Jit MT MD"></p>
+<p>可以看到所有Jit编译过的方法,其方法描述符的 00h或者40h 会 逻辑 <strong>或</strong> 31h,都是按位的,其中30h是安全描述符先忽略,01h代表是否Jit编译过,同时所有Jit编译过的方法其方法入口(entrypoint)会更新</p>
+<p>更新安全描述符:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div></pre></td><td class="code"><pre><div class="line">0:000&gt; uf mscorwks!MethodDesc::SetCriticalTransparentInfo</div><div class="line">mscorwks!MethodDesc::SetCriticalTransparentInfo:</div><div class="line">79e90595 55              push    ebp</div><div class="line">79e90596 8bec            mov     ebp,esp</div><div class="line">79e90598 837d0c00        cmp     dword ptr [ebp+0Ch],0</div><div class="line">79e9059c 0f84a4e01100    je      mscorwks!MethodDesc::SetCriticalTransparentInfo+0xe (79fae646)</div><div class="line"></div><div class="line">mscorwks!MethodDesc::SetCriticalTransparentInfo+0x9:</div><div class="line">79e905a2 6a30            push    30h</div><div class="line">79e905a4 58              pop     eax</div><div class="line"></div><div class="line">mscorwks!MethodDesc::SetCriticalTransparentInfo+0x1b:</div><div class="line">79e905a5 6a01            push    1</div><div class="line">79e905a7 50              push    eax</div><div class="line">79e905a8 e8caffffff      call    mscorwks!MethodDesc::InterlockedUpdateFlags2 (79e90577)</div><div class="line">79e905ad 5d              pop     ebp</div><div class="line">79e905ae c20800          ret     8</div><div class="line"></div><div class="line">mscorwks!MethodDesc::SetCriticalTransparentInfo+0xe:</div><div class="line">79fae646 8b4508          mov     eax,dword ptr [ebp+8]</div><div class="line">79fae649 f7d8            neg     eax</div><div class="line">79fae64b 1bc0            sbb     eax,eax</div><div class="line">79fae64d 83e010          and     eax,10h</div><div class="line">79fae650 83c010          add     eax,10h</div><div class="line">79fae653 e94d1feeff      jmp     mscorwks!MethodDesc::SetCriticalTransparentInfo+0x1b (79e905a5)</div></pre></td></tr></table></figure></p>
+<p>先更新方法入口,再更新是否Jit编译标记位:<br><a href="https://github.com/dotnet/coreclr/blob/master/src/vm/method.cpp#L5099" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/src/vm/method.cpp#L5099</a><br><figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line">BOOL MethodDesc::SetStableEntryPointInterlocked(PCODE addr)</div><div class="line">&#123;</div><div class="line">    CONTRACTL &#123;</div><div class="line">        THROWS;</div><div class="line">        GC_NOTRIGGER;</div><div class="line">    &#125; CONTRACTL_END;</div><div class="line"></div><div class="line">    _ASSERTE(!HasPrecode());</div><div class="line"></div><div class="line">    PCODE pExpected = GetTemporaryEntryPoint();</div><div class="line">    PTR_PCODE pSlot = GetAddrOfSlot();</div><div class="line">    EnsureWritablePages(pSlot);</div><div class="line"></div><div class="line">    BOOL fResult = FastInterlockCompareExchangePointer(pSlot, addr, pExpected) == pExpected;</div><div class="line"></div><div class="line">    InterlockedUpdateFlags2(enum_flag2_HasStableEntryPoint, TRUE);</div><div class="line"></div><div class="line">    <span class="keyword">return</span> fResult;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div></pre></td><td class="code"><pre><div class="line">0:000&gt; uf mscorwks!MethodDesc::SetStableEntryPointInterlocked</div><div class="line">mscorwks!MethodDesc::SetStableEntryPointInterlocked:</div><div class="line">79ed9a27 55              push    ebp</div><div class="line">79ed9a28 8bec            mov     ebp,esp</div><div class="line">79ed9a2a 53              push    ebx</div><div class="line">79ed9a2b 56              push    esi</div><div class="line">79ed9a2c 57              push    edi</div><div class="line">79ed9a2d 8bf9            mov     edi,ecx</div><div class="line">79ed9a2f e8b96afbff      call    mscorwks!MethodDesc::GetTemporaryEntryPoint (79e904ed)</div><div class="line">79ed9a34 8bcf            mov     ecx,edi</div><div class="line">79ed9a36 8bd8            mov     ebx,eax</div><div class="line">79ed9a38 e8156bfbff      call    mscorwks!MethodDesc::GetAddrOfSlot (79e90552)</div><div class="line">79ed9a3d 8b5508          mov     edx,dword ptr [ebp+8]</div><div class="line">79ed9a40 53              push    ebx</div><div class="line">79ed9a41 8bc8            mov     ecx,eax</div><div class="line">79ed9a43 ff15d0c33c7a    call    dword ptr [mscorwks!FastInterlockCompareExchange (7a3cc3d0)]</div><div class="line">79ed9a49 8bf0            mov     esi,eax</div><div class="line">79ed9a4b 2bf3            sub     esi,ebx</div><div class="line">79ed9a4d f7de            neg     esi</div><div class="line">79ed9a4f 1bf6            sbb     esi,esi</div><div class="line">79ed9a51 46              inc     esi</div><div class="line">79ed9a52 ba00000001      mov     edx,1000000h</div><div class="line">79ed9a57 8bcf            mov     ecx,edi</div><div class="line">79ed9a59 ff1574c23c7a    call    dword ptr [mscorwks!FastInterlockOr (7a3cc274)]</div><div class="line">79ed9a5f 5f              pop     edi</div><div class="line">79ed9a60 8bc6            mov     eax,esi</div><div class="line">79ed9a62 5e              pop     esi</div><div class="line">79ed9a63 5b              pop     ebx</div><div class="line">79ed9a64 5d              pop     ebp</div><div class="line">79ed9a65 c20400          ret     4</div></pre></td></tr></table></figure>
+<ul>
+<li>可以通过 <code>DumpMD</code> SOS扩展命令观察方法描述符:</li>
+</ul>
+<p><img src="/img/01MD/07.png" alt="" title="Jit MT MD"></p>
+<p>为毛要研究方法描述符这个东西?<br>方法描述符在CLR运行时作为方法的最基础服务,继承多态在运行时的实现依赖方法描述符,接口多态的运行时DispatchToken以及实现也依赖.</p>
+<blockquote>
+<h2 id="参考文档："><a href="#参考文档：" class="headerlink" title="参考文档："></a>参考文档：</h2><p><a href="https://github.com/dotnet/coreclr/blob/master/Documentation/botr/method-descriptor.md" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/Documentation/botr/method-descriptor.md</a><br><a href="https://github.com/dotnet/coreclr/blob/master/src/vm/methodtablebuilder.cpp" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/src/vm/methodtablebuilder.cpp</a><br><a href="https://github.com/dotnet/coreclr/blob/master/src/vm/method.hpp" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/src/vm/method.hpp</a><br><a href="http://blogs.microsoft.co.il/sasha/2009/09/27/how-are-methods-compiled-just-in-time-and-only-then/" target="_blank" rel="external">http://blogs.microsoft.co.il/sasha/2009/09/27/how-are-methods-compiled-just-in-time-and-only-then/</a></p>
+</blockquote>
 
       
     </div>
@@ -177,7 +247,7 @@
       
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags"></i>
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CLR/">CLR</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JIT/">JIT</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RunTime/">RunTime</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/test/">test</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NET/">.NET</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CLR/">CLR</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JIT/">JIT</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RunTime/">RunTime</a></li></ul>
 	</div>
 
       
@@ -257,6 +327,8 @@ var _hmt = _hmt || [];
     
     
     
+      <li data-hook="tools-section-me"><span class="text">我</span><i class="icon-smile"></i></li>
+    
   </ul>
   <div class="tools-wrap">
     
@@ -267,13 +339,19 @@ var _hmt = _hmt || [];
     
     	<section class="tools-section tools-section-tag">
     			<div class="widget tagcloud" id="js-tagcloud">
-    				<a href="/tags/CLR/" style="font-size: 10px;">CLR</a> <a href="/tags/JIT/" style="font-size: 10px;">JIT</a> <a href="/tags/RunTime/" style="font-size: 10px;">RunTime</a> <a href="/tags/test/" style="font-size: 10px;">test</a>
+    				<a href="/tags/NET/" style="font-size: 10px;">.NET</a> <a href="/tags/CLR/" style="font-size: 10px;">CLR</a> <a href="/tags/JIT/" style="font-size: 10px;">JIT</a> <a href="/tags/RunTime/" style="font-size: 10px;">RunTime</a>
     			</div>
     	</section>
     
 
     
 
+    
+    	<section class="tools-section tools-section-me">
+  	  	
+  	  		<div class="aboutme-wrap" id="js-aboutme">espider@126.com</div>
+  	  	
+    	</section>
     
   </div>
   
