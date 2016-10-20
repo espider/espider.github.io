@@ -4,17 +4,18 @@
   <meta charset="utf-8">
   
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
-  <title>Category: CLR | espider.github.io</title>
+  <title>CLR运行时细节 - 继承多态的实现 | espider.github.io</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="blog for CLR details">
-<meta property="og:type" content="website">
-<meta property="og:title" content="espider.github.io">
-<meta property="og:url" content="http://espider.github.io/categories/CLR/index.html">
+  <meta name="description" content="CLR运行时细节 - 继承多态的实现 inheritance polymorphism">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CLR运行时细节 - 继承多态的实现">
+<meta property="og:url" content="http://espider.github.io/CLR/inheritance-polymorphism/index.html">
 <meta property="og:site_name" content="espider.github.io">
-<meta property="og:description" content="blog for CLR details">
+<meta property="og:description" content="CLR运行时细节 - 继承多态的实现 inheritance polymorphism">
+<meta property="og:updated_time" content="2016-10-20T06:46:33.060Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="espider.github.io">
-<meta name="twitter:description" content="blog for CLR details">
+<meta name="twitter:title" content="CLR运行时细节 - 继承多态的实现">
+<meta name="twitter:description" content="CLR运行时细节 - 继承多态的实现 inheritance polymorphism">
   
     <link rel="alternative" href="/atom.xml" title="espider.github.io" type="application/atom+xml">
   
@@ -139,96 +140,71 @@
 </nav>
 
       <div class="body-wrap">
+        <article id="post-inheritance-polymorphism" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
         
   
+    <h1 class="article-title" itemprop="name">
+      CLR运行时细节 - 继承多态的实现
+    </h1>
   
+
+      </header>
     
-    
+    <div class="article-entry" itemprop="articleBody">
       
+        <!-- # CLR运行时细节 - 继承多态的实现 inheritance polymorphism -->
+<p>## </p>
+
       
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2016" class="archive-year">2016</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/CLR/inheritance-polymorphism/" class="archive-article-date">
+    </div>
+    <div class="article-info article-info-index">
+      
+      <a href="/CLR/inheritance-polymorphism/" class="archive-article-date">
   	<time datetime="2016-10-19T16:00:00.000Z" itemprop="datePublished"><i class="icon-clock"></i>2016-10-20</time>
 </a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/CLR/inheritance-polymorphism/">CLR运行时细节 - 继承多态的实现</a>
-    </h1>
-  
-
-        <div class="article-info info-on-right">
-          
+      
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags"></i>
 		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NET/">.NET</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CLR/">CLR</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JIT/">JIT</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RunTime/">RunTime</a></li></ul>
 	</div>
 
-          
+      
 	<div class="article-category tagcloud">
 	<i class="icon-price-tags"></i>
 	<a class="article-category-link" href="/categories/CLR/">CLR</a>
 	</div>
 
 
-        </div>
-        <div class="clearfix"></div>
-    </header>
+      <div class="clearfix"></div>
+    </div>
   </div>
 </article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/CLR/method-descriptor/" class="archive-article-date">
-  	<time datetime="2016-10-16T16:00:00.000Z" itemprop="datePublished"><i class="icon-clock"></i>2016-10-17</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/CLR/method-descriptor/">CLR运行时细节 - Method Descriptor</a>
-    </h1>
-  
 
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags"></i>
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NET/">.NET</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CLR/">CLR</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JIT/">JIT</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RunTime/">RunTime</a></li></ul>
-	</div>
-
-          
-	<div class="article-category tagcloud">
-	<i class="icon-price-tags"></i>
-	<a class="article-category-link" href="/categories/CLR/">CLR</a>
-	</div>
+  
+<nav id="article-nav">
+  
+  
+    <a href="/CLR/method-descriptor/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">CLR运行时细节 - Method Descriptor</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
 
 
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
-  
 
-    
+
+
+
+
+
+
 
 
       </div>
@@ -251,10 +227,10 @@
 		mathjax: false,
 		animate: true,
 		isHome: false,
-		isPost: false,
+		isPost: true,
 		isArchive: false,
 		isTag: false,
-		isCategory: true,
+		isCategory: false,
 		open_in_new: false,
 		root: "/",
 		innerArchive: true
