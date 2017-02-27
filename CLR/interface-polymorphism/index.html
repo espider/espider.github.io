@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  <title>CLR运行时细节 - 接口多态的实现 | espider.github.io</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="CLR运行时细节 - 接口多态的实现 Interface Polymorphism Virtual Stub Dispatch">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CLR运行时细节 - 接口多态的实现">
+<meta property="og:url" content="http://espider.github.io/CLR/interface-polymorphism/index.html">
+<meta property="og:site_name" content="espider.github.io">
+<meta property="og:description" content="CLR运行时细节 - 接口多态的实现 Interface Polymorphism Virtual Stub Dispatch">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/01poly.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-1.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-2.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-3.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-4.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-5.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-6.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-7.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-8.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-9.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-10.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-10-1.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-11.png">
+<meta property="og:image" content="http://espider.github.io/img/02PMIP/1-12.png">
+<meta property="og:updated_time" content="2017-02-27T01:32:08.313Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CLR运行时细节 - 接口多态的实现">
+<meta name="twitter:description" content="CLR运行时细节 - 接口多态的实现 Interface Polymorphism Virtual Stub Dispatch">
+<meta name="twitter:image" content="http://espider.github.io/img/02PMIP/01poly.png">
+  
+    <link rel="alternative" href="/atom.xml" title="espider.github.io" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/img/favicon.ico">
+  
+  <script src="/style.js"></script>
+  
+
+</head>
+
+<body>
+  <div id="container">
+    <div class="left-col">
+      <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img src="/img/logo.jpg" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">chengl</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">blog for CLR details</p>
+		
+
+		<nav class="header-menu">
+			<ul>
+			
+				<li><a href="/">主页</a></li>
+	        
+				<li><a href="/tags/随笔">随笔</a></li>
+	        
+			</ul>
+		</nav>
+		<nav class="header-smart-menu">
+	        
+    		
+    			
+    			<a class="js-smart-menu" data-idx="0" href="javascript:void(0)">所有文章</a>
+    			
+    			
+            
+    			
+    			<a class="js-smart-menu" data-idx="1" href="javascript:void(0)">标签</a>
+    			
+    			
+            
+    			
+            
+    			
+    			<a class="js-smart-menu" data-idx="2" href="javascript:void(0)">@我</a>
+    			
+    			
+            
+		</nav>
+		<nav class="header-nav">
+			<div class="social">
+				
+					<a class="github" target="_blank" href="#" title="github">github</a>
+		        
+					<a class="weibo" target="_blank" href="#" title="weibo">weibo</a>
+		        
+					<a class="rss" target="_blank" href="#" title="rss">rss</a>
+		        
+					<a class="zhihu" target="_blank" href="#" title="zhihu">zhihu</a>
+		        
+			</div>
+		</nav>
+	</header>		
+</div>
+
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"><i class="icon-list"></i></div>
+  		<h1 class="header-author js-mobile-header hide">chengl</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+				
+					<img src="/img/logo.jpg" class="js-avatar">
+				
+			</div>
+			<hgroup>
+			  <h1 class="header-author">chengl</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">blog for CLR details</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/tags/随笔">随笔</a></li>
+		        
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="#" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="#" title="weibo">weibo</a>
+			        
+						<a class="rss" target="_blank" href="#" title="rss">rss</a>
+			        
+						<a class="zhihu" target="_blank" href="#" title="zhihu">zhihu</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+
+      <div class="body-wrap">
+        <article id="post-interface-polymorphism" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      CLR运行时细节 - 接口多态的实现
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <!-- # CLR运行时细节 - 接口多态的实现 Interface Polymorphism Virtual Stub Dispatch -->
+<h2 id=""><a href="#" class="headerlink" title=" "></a> </h2><p><strong>关于接口多态(Framework 2.0之后的版本),CLR运行时的实现比继承多态要复杂得多,而网上大部分的文章和资料描述的还是Framework 1.1的实现方式,2.0之后变化非常大,这也是写此文的目的,说明下2.0版本开始的实现细节。</strong><br><strong>先看个有趣的Demo:</strong><br><figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">using</span> System;</div><div class="line"><span class="keyword">using</span> System.Diagnostics;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> Program</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">Main</span><span class="params">(<span class="built_in">string</span>[] args)</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"Polymorphism02_01 demo"</span>);</div><div class="line">		<span class="keyword">int</span> loopCount = <span class="number">100000000</span>;</div><div class="line"></div><div class="line">		IFoo ifo = null;</div><div class="line">		Stopwatch sw = Stopwatch.StartNew();</div><div class="line"></div><div class="line">		<span class="meta">#region Case 1</span></div><div class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; loopCount; ++i)</div><div class="line">		&#123;</div><div class="line">			<span class="keyword">if</span> (i % <span class="number">2</span> == <span class="number">0</span>)</div><div class="line">			&#123;</div><div class="line">				ifo = <span class="keyword">new</span> TestA();</div><div class="line">			&#125;</div><div class="line">			<span class="keyword">else</span></div><div class="line">			&#123;</div><div class="line">				ifo = <span class="keyword">new</span> TestB();</div><div class="line">			&#125;</div><div class="line">			ifo.Foo();</div><div class="line">		&#125;</div><div class="line">		Console.WriteLine(<span class="string">"Case 1 take time: &#123;0&#125; ms"</span>, sw.ElapsedMilliseconds);</div><div class="line">		<span class="meta">#endregion</span></div><div class="line"></div><div class="line">		<span class="meta">#region Case 2</span></div><div class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; loopCount; ++i)</div><div class="line">		&#123;</div><div class="line">			<span class="keyword">if</span> (i % <span class="number">2</span> == <span class="number">0</span>)</div><div class="line">			&#123;</div><div class="line">				ifo = <span class="keyword">new</span> TestA();</div><div class="line">				ifo.Foo();</div><div class="line">			&#125;</div><div class="line">			<span class="keyword">else</span></div><div class="line">			&#123;</div><div class="line">				ifo = <span class="keyword">new</span> TestB();</div><div class="line">				ifo.Foo();</div><div class="line">			&#125;</div><div class="line">		&#125;</div><div class="line">		Console.WriteLine(<span class="string">"Case 2 take time: &#123;0&#125; ms"</span>, sw.ElapsedMilliseconds);</div><div class="line">		<span class="meta">#endregion</span></div><div class="line"></div><div class="line">		sw.Reset();</div><div class="line">		Console.ReadLine();</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> interface IFoo</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">void</span> <span class="title">Foo</span><span class="params">()</span></span>;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> TestA : IFoo</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		<span class="keyword">try</span></div><div class="line">		&#123;</div><div class="line">			<span class="keyword">int</span> i = <span class="number">1</span> + <span class="number">1</span>;</div><div class="line">		&#125;</div><div class="line">		<span class="keyword">catch</span> (Exception ex)</div><div class="line">		&#123; &#125;</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> TestB : IFoo</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		<span class="keyword">try</span></div><div class="line">		&#123;</div><div class="line">			<span class="keyword">int</span> i = <span class="number">1</span> + <span class="number">1</span>;</div><div class="line">		&#125;</div><div class="line">		<span class="keyword">catch</span> (Exception ex)</div><div class="line">		&#123; &#125;</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p><strong>源码内有2种方案:</strong></p>
+<ul>
+<li>Case 1:根据条件实例化后 一次调用 实现的 <strong>Foo()</strong> 方法</li>
+<li>Case 2:根据条件每次实例化后都立即调用实现的 <strong>Foo()</strong> 方法</li>
+</ul>
+<p>2种方案的功能上没有区别,只是写法上,第一种是我们日常多态的写法,第二种没有体现多态的优势.</p>
+<p><strong>请用Framework 2.0(或者2.0以后的版本)分别编译 Case1功能和Case2功能,看2个方案的执行时间:</strong></p>
+<p><img src="/img/02PMIP/01poly.png" alt="" title="interface 2.0 result"></p>
+<p><strong>截图是我本地电脑的截图,不具有普遍性,但具有代表性:也就是 Case 2 的速度要比 Case 1 的速度快,这个性能的差异就与CLR运行时的实现有关系了.</strong></p>
+<ul>
+<li>我们先来简单看下 Framework 1.1 在接口多态的运行时实现方式,下面截取Main方法中关于接口调用部分:<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">...</div><div class="line">012200b3 8bf7            mov     esi,edi</div><div class="line">012200b5 8bce            mov     ecx,esi</div><div class="line">012200b7 8b01            mov     eax,dword ptr [ecx]</div><div class="line">012200b9 8b400c          mov     eax,dword ptr [eax+0Ch]</div><div class="line">012200bc 8b80d0000000    mov     eax,dword ptr [eax+0D0h]</div><div class="line">012200c2 ff10            call    dword ptr [eax]</div><div class="line">...</div></pre></td></tr></table></figure>
+</li>
+</ul>
+<p><strong>可以看到Framework1.1对于接口多态的运行时实现和4.0的继承多态实现类似,先把对象地址赋给ecx寄存器,在把对象第1个4字节(64位8字节)的方法表(MethodTable)赋给eax寄存器,再通过方法表地址偏移0Ch的位置 取出接口偏移表地址 IOT (Interface Offset Table) 赋给eax寄存器,再通过IOT偏移0D0h的位置 取出对应实现接口的方法入口地址 赋给eax寄存器,最后调用.</strong></p>
+<p><strong>也就是每个类型的方法表内包含接口偏移表的入口地址(偏移0Ch的位置),再通过接口偏移表内相同的方法实现有着相同的偏移量来完成多态,但接口是可以多实现的,和继承不同,继承是单一继承(先父类再子类的排列顺序可以保证同一个虚方法的实现有着相同的偏移量),而接口的这种做法明显是以空间换时间的方案, Framework2.0 开始对于接口的调用实现有了非常大的调整.</strong></p>
+<ul>
+<li>通过下面的Demo看下2.0之后的实现</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">using</span> System;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> Program</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">Main</span><span class="params">(<span class="built_in">string</span>[] args)</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"Polymorphism02_02 demo"</span>);</div><div class="line">		Console.ReadLine();</div><div class="line"></div><div class="line">		IFoo2 ifo2 = <span class="keyword">new</span> TestA();</div><div class="line">		ifo2.Foo2();</div><div class="line">		</div><div class="line">		IFoo1 ifo = null;</div><div class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt;= <span class="number">102</span>; i++)</div><div class="line">		&#123;</div><div class="line">			<span class="keyword">if</span> (i &lt;= <span class="number">1</span>)</div><div class="line">			&#123; ifo = <span class="keyword">new</span> TestA(); &#125;</div><div class="line">			<span class="keyword">else</span></div><div class="line">			&#123; ifo = <span class="keyword">new</span> TestB(); &#125;</div><div class="line">			</div><div class="line">			ifo.Foo11();</div><div class="line">		&#125;</div><div class="line">		Console.ReadLine();</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> interface IFoo1</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">void</span> <span class="title">Foo1</span><span class="params">()</span></span>;</div><div class="line">	<span class="function"><span class="keyword">void</span> <span class="title">Foo11</span><span class="params">()</span></span>;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> interface IFoo2</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">void</span> <span class="title">Foo2</span><span class="params">()</span></span>;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> TestA : IFoo1,IFoo2</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"TestA IFoo1"</span>);</div><div class="line">	&#125;</div><div class="line">	</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo11</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"TestA Foo11"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"TestA Foo2"</span>);</div><div class="line">	&#125;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">public</span> <span class="keyword">class</span> TestB : IFoo1,IFoo2</div><div class="line">&#123;</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo1</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"TestB IFoo1"</span>);</div><div class="line">	&#125;</div><div class="line">	</div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo11</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"TestB Foo11"</span>);</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">Foo2</span><span class="params">()</span></span></div><div class="line">	&#123;</div><div class="line">		Console.WriteLine(<span class="string">"TestB Foo2"</span>);</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<ul>
+<li><p>用2.0方式编译：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">%windir%\Microsoft.NET\Framework\v2.0.50727\csc.exe /debug /target:exe /out:e:\temp\Polymorphism02_02_2.0.exe e:\temp\Polymorphism02_02.cs</div><div class="line">pause</div></pre></td></tr></table></figure>
+</li>
+<li><p>运行程序并通过windbg附加到程序进程,查找Main方法的编译结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div><div class="line">70</div><div class="line">71</div><div class="line">72</div><div class="line">73</div><div class="line">74</div><div class="line">75</div><div class="line">76</div><div class="line">77</div><div class="line">78</div><div class="line">79</div><div class="line">80</div><div class="line">81</div><div class="line">82</div><div class="line">83</div><div class="line">84</div><div class="line">85</div></pre></td><td class="code"><pre><div class="line">0:004&gt; !u 01010070   </div><div class="line">Normal JIT generated code</div><div class="line">Program.Main(System.String[])</div><div class="line">Begin 01010070, size f2</div><div class="line">&gt;&gt;&gt; 01010070 55              push    ebp</div><div class="line">01010071 8bec            mov     ebp,esp</div><div class="line">01010073 83ec20          sub     esp,20h</div><div class="line">01010076 894dfc          mov     dword ptr [ebp-4],ecx</div><div class="line">01010079 833d142eaf0000  cmp     dword ptr ds:[0AF2E14h],0</div><div class="line">01010080 7405            je      01010087</div><div class="line">01010082 e832ff0d79      call    mscorwks!JIT_DbgIsJustMyCode (7a0effb9)</div><div class="line">01010087 33d2            xor     edx,edx</div><div class="line">01010089 8955ec          mov     dword ptr [ebp-14h],edx</div><div class="line">0101008c c745f400000000  mov     dword ptr [ebp-0Ch],0</div><div class="line">01010093 33d2            xor     edx,edx</div><div class="line">01010095 8955f8          mov     dword ptr [ebp-8],edx</div><div class="line">01010098 33d2            xor     edx,edx</div><div class="line">0101009a 8955f0          mov     dword ptr [ebp-10h],edx</div><div class="line">0101009d 90              nop</div><div class="line">0101009e 8b0d30204202    mov     ecx,dword ptr ds:[2422030h] (&quot;Polymorphism02_02 demo&quot;)</div><div class="line">*** WARNING: Unable to verify checksum for C:\WINDOWS\assembly\NativeImages_v2.0.50727_32\mscorlib\b14359470744c840c59fbe4e58034fd6\mscorlib.ni.dll</div><div class="line">010100a4 e8b3457878      call    mscorlib_ni+0x6d465c (7979465c) (System.Console.WriteLine(System.String), mdToken: 060007c8)</div><div class="line">010100a9 90              nop</div><div class="line">010100aa e8c1487878      call    mscorlib_ni+0x6d4970 (79794970) (System.Console.ReadLine(), mdToken: 060007ba)</div><div class="line">010100af 90              nop</div><div class="line">010100b0 b99431af00      mov     ecx,0AF3194h (MT: TestA)</div><div class="line">010100b5 e8621fadff      call    00ae201c (JitHelp: CORINFO_HELP_NEWSFAST)</div><div class="line">010100ba 8945e8          mov     dword ptr [ebp-18h],eax</div><div class="line">010100bd 8b4de8          mov     ecx,dword ptr [ebp-18h]</div><div class="line">010100c0 ff15d831af00    call    dword ptr ds:[0AF31D8h] (TestA..ctor(), mdToken: 06000009)</div><div class="line">010100c6 8b45e8          mov     eax,dword ptr [ebp-18h]</div><div class="line">010100c9 8945f0          mov     dword ptr [ebp-10h],eax</div><div class="line">010100cc 8b4df0          mov     ecx,dword ptr [ebp-10h]</div><div class="line">010100cf ff151000b000    call    dword ptr ds:[0B00010h]</div><div class="line">010100d5 90              nop</div><div class="line">010100d6 33d2            xor     edx,edx</div><div class="line">010100d8 8955ec          mov     dword ptr [ebp-14h],edx</div><div class="line">010100db 33d2            xor     edx,edx</div><div class="line">010100dd 8955f8          mov     dword ptr [ebp-8],edx</div><div class="line">010100e0 90              nop</div><div class="line">010100e1 eb61            jmp     01010144</div><div class="line">010100e3 90              nop</div><div class="line">010100e4 837df801        cmp     dword ptr [ebp-8],1</div><div class="line">010100e8 0f9fc0          setg    al</div><div class="line">010100eb 0fb6c0          movzx   eax,al</div><div class="line">010100ee 8945f4          mov     dword ptr [ebp-0Ch],eax</div><div class="line">010100f1 837df400        cmp     dword ptr [ebp-0Ch],0</div><div class="line">010100f5 7521            jne     01010118</div><div class="line">010100f7 90              nop</div><div class="line">010100f8 b99431af00      mov     ecx,0AF3194h (MT: TestA)</div><div class="line">010100fd e81a1fadff      call    00ae201c (JitHelp: CORINFO_HELP_NEWSFAST)</div><div class="line">01010102 8945e0          mov     dword ptr [ebp-20h],eax</div><div class="line">01010105 8b4de0          mov     ecx,dword ptr [ebp-20h]</div><div class="line">01010108 ff15d831af00    call    dword ptr ds:[0AF31D8h] (TestA..ctor(), mdToken: 06000009)</div><div class="line">0101010e 8b45e0          mov     eax,dword ptr [ebp-20h]</div><div class="line">01010111 8945ec          mov     dword ptr [ebp-14h],eax</div><div class="line">01010114 90              nop</div><div class="line">01010115 90              nop</div><div class="line">01010116 eb1e            jmp     01010136</div><div class="line">01010118 90              nop</div><div class="line">01010119 b92832af00      mov     ecx,0AF3228h (MT: TestB)</div><div class="line">0101011e e8f91eadff      call    00ae201c (JitHelp: CORINFO_HELP_NEWSFAST)</div><div class="line">01010123 8945e4          mov     dword ptr [ebp-1Ch],eax</div><div class="line">01010126 8b4de4          mov     ecx,dword ptr [ebp-1Ch]</div><div class="line">01010129 ff156c32af00    call    dword ptr ds:[0AF326Ch] (TestB..ctor(), mdToken: 0600000d)</div><div class="line">0101012f 8b45e4          mov     eax,dword ptr [ebp-1Ch]</div><div class="line">01010132 8945ec          mov     dword ptr [ebp-14h],eax</div><div class="line">01010135 90              nop</div><div class="line">01010136 8b4dec          mov     ecx,dword ptr [ebp-14h]</div><div class="line">01010139 ff159000b000    call    dword ptr ds:[0B00090h]</div><div class="line">0101013f 90              nop</div><div class="line">01010140 90              nop</div><div class="line">01010141 ff45f8          inc     dword ptr [ebp-8]</div><div class="line">01010144 837df866        cmp     dword ptr [ebp-8],66h</div><div class="line">01010148 0f9ec0          setle   al</div><div class="line">0101014b 0fb6c0          movzx   eax,al</div><div class="line">0101014e 8945f4          mov     dword ptr [ebp-0Ch],eax</div><div class="line">01010151 837df400        cmp     dword ptr [ebp-0Ch],0</div><div class="line">01010155 758c            jne     010100e3</div><div class="line">01010157 e814487878      call    mscorlib_ni+0x6d4970 (79794970) (System.Console.ReadLine(), mdToken: 060007ba)</div><div class="line">0101015c 90              nop</div><div class="line">0101015d 90              nop</div><div class="line">0101015e 8be5            mov     esp,ebp</div><div class="line">01010160 5d              pop     ebp</div><div class="line">01010161 c3              ret</div></pre></td></tr></table></figure>
+</li>
+<li><p>这里最重要的几行：<br><code>010100cf ff151000b000    call    dword ptr ds:[0B00010h]</code><br>对应源码：<code>ifo2.Foo2();</code></p>
+</li>
+</ul>
+<p><code>01010139 ff159000b000    call    dword ptr ds:[0B00090h]</code><br>对应源码：<code>ifo.Foo11();</code></p>
+<p><strong>也就是说运行时不管调用这个接口方法的实例是什么类型的都通过这个内存地址的内容去到相应的实现</strong><br>前来看看目前这2块内存的内容：</p>
+<p><img src="/img/02PMIP/1-1.png" alt="" title="memory indcellHeap"></p>
+<p>分别指向 <code>00b06012</code> 和 <code>00b06022</code> 这4个内容地址所属的位置：</p>
+<p><img src="/img/02PMIP/1-2.png" alt="" title="Domain Virtual Call Stub Heap"></p>
+<p>也就是说运行时为每个调用点(<strong>call site</strong>)分配一个 Indirect cell (在应用程序域的IndcellHeap堆内)默认情况下其内容指针指向 Lookup Cell(在应用程序域的LookupHeap堆内)，再来看看这2块lookupHeap的内容：</p>
+<p><img src="/img/02PMIP/1-3.png" alt="" title="ResolveWorkerAsmStub"></p>
+<p>这里2个 <strong>DispatchToken</strong> 30000h，50001h分别代表2个接口方法的调用，DispatchToken的构成比较有意思，分为2段各16位(目前是32位进程)，高16位是TypeID，应用程序域在运行时为每个接口类型动态分配的ID，也就是接口类型在运行时唯一的标识，TypeID的起始值是3步长是2，应用程序域内持有2个HashMap分别用于对于TypeID和方法表的对应(MethodTable)，以及方法表对应TypeID</p>
+<p><img src="/img/02PMIP/1-4.png" alt="" title="Domain TypeID HashMap"></p>
+<p><img src="/img/02PMIP/1-5.png" alt="" title="Domain TypeID HashMap2"></p>
+<ul>
+<li>这2个HashMap的Hash算法是一样的：每个桶存储4对 key/value 算法是Hash key 右移2位为种子(seed)，种子模桶的长度找到对应的桶，然后循环桶内的4个slot匹配key，如果桶已满，则种子增加incr 继续查找。</li>
+<li>图里方法表00af312c是IFoo2的方法表，00af30c0是IFoo1的方法表，可以看出在运行时先编译到IFoo2的方法调用，所以先为IFoo2分配TypeID=3，再编译到IFoo1的方法调用 TypeID=5</li>
+<li>在第一个HashMap(TypeID-&gt;MT)内，IFoo2的key:3右移2位为0，所以在0号桶内，value:MT 右移1位存如桶内对应的位置。IFoo1的key:5 右移2位为1，所以在1号桶内，value:MT 右移1位存入桶内对应的位置。</li>
+<li>在第二个HashMap(MT-&gt;TypeID)内，IFoo2的key:00af312c右移2位为2BCC4B 再模11为7，所以IFoo2的MT和TypeID在7号桶，同样IFoo1的key：00af30c0右移2位为2BCC30 再模11为2，所以IFoo1的MT和TypeID在2号桶里。</li>
+</ul>
+<p><img src="/img/02PMIP/1-6.png" alt="" title="interface methodtable"></p>
+<p><strong>DispatchToken的低16位是由方法在接口内的方法索引(slot index前面的文章介绍过如果查看方法描述及方法槽索引)，也就是在运行时DispatchToken可以唯一代表某个接口的某个方法调用，这里和实现类还没有关系。</strong></p>
+<p>在循环内i=2的时候再中断观察接口调用(call site)的内存变化(这里前2次都用TestA来实例化是因为IndcellHeap的内容并不是立刻被改的，官方的说法：<strong>appropriate do it</strong>)</p>
+<p><img src="/img/02PMIP/1-7.png" alt="" title="indcellHeap to DispatchHeap"></p>
+<p>目前的调用点IndcellHeap的内容指向了DispatchHeap，内容也有了变化：</p>
+<p><img src="/img/02PMIP/1-8.png" alt="" title="DispatchHeap"></p>
+<p><img src="/img/02PMIP/1-9.png" alt="" title="DispatchHeap content"></p>
+<p>可以看到DispatchHeap的内容就3行，第一行比较传进来的对象是不是TestA类型的，不是的话跳到 00b0a011，是TestA类型的话跳到 010101e8，这个010101e8就是TestA类型实现接口方法 Foo11 的入口，也就是运行时先假设我们传进来的对象都是TestA，这样经过短短的几条指令就能到达TestA的接口实现，那如果不是TestA呢？TestB也实现了，并且在运行时调用了。看下条件失败的调整地址情况：</p>
+<p><img src="/img/02PMIP/1-10.png" alt="" title="DispatchHeap content2"></p>
+<p>第1句是对某个内存地址减1的操作，看下这块内存目前内容是64h(十进制的100)，也就是在多态接口调用的时候不是TestA对象的话会进入另外一个流程，并在其内部做1个失败计数器，从100开始递减，递减的过程：</p>
+<p><img src="/img/02PMIP/1-10-1.png" alt="" title="DispatchHeap content3"></p>
+<p>最终减完会发生什么，等程序循环执行完再观察调用点的内存。</p>
+<p><img src="/img/02PMIP/1-11.png" alt="" title="ResolveHeap content"></p>
+<p>接口调用点(call site)IndcellHeap的内容指向了ResolveHeap，ResolveHeap的内容：</p>
+<p><img src="/img/02PMIP/1-12.png" alt="" title="ResolveHeap content2"></p>
+<p>现在调用点的IndcellHeap内容就不再变化了，不管再用那个对象在循环内再调用Foo11方法，都是通过ResolveHeap内存的方法进行中转的。</p>
+<h5 id="总结下：-NET-2-0-开始对接口的多态实现比1-1的时候要复杂的多，也更灵活，它假设我们在接口调用的时候是单态的-或者说多态的次数不多的情况，用某个实现类的方法表-MT-加以判断，如果是则直接跳到这个实现类的接口实现入口，如果不是-则对失败进行计数，并在失败达到一定数量后-100次-认为确实是多态调用，并将call-site的入口指向ResolveHeap，此时不再单独判断某个类型的方法表-MT-，这也是为何在文章开头的Demo里为何2种写法的性能是有差别的原因了。"><a href="#总结下：-NET-2-0-开始对接口的多态实现比1-1的时候要复杂的多，也更灵活，它假设我们在接口调用的时候是单态的-或者说多态的次数不多的情况，用某个实现类的方法表-MT-加以判断，如果是则直接跳到这个实现类的接口实现入口，如果不是-则对失败进行计数，并在失败达到一定数量后-100次-认为确实是多态调用，并将call-site的入口指向ResolveHeap，此时不再单独判断某个类型的方法表-MT-，这也是为何在文章开头的Demo里为何2种写法的性能是有差别的原因了。" class="headerlink" title="总结下：.NET 2.0 开始对接口的多态实现比1.1的时候要复杂的多，也更灵活，它假设我们在接口调用的时候是单态的 或者说多态的次数不多的情况，用某个实现类的方法表(MT)加以判断，如果是则直接跳到这个实现类的接口实现入口，如果不是 则对失败进行计数，并在失败达到一定数量后(100次)认为确实是多态调用，并将call site的入口指向ResolveHeap，此时不再单独判断某个类型的方法表(MT)，这也是为何在文章开头的Demo里为何2种写法的性能是有差别的原因了。"></a>总结下：.NET 2.0 开始对接口的多态实现比1.1的时候要复杂的多，也更灵活，它假设我们在接口调用的时候是单态的 或者说多态的次数不多的情况，用某个实现类的方法表(MT)加以判断，如果是则直接跳到这个实现类的接口实现入口，如果不是 则对失败进行计数，并在失败达到一定数量后(100次)认为确实是多态调用，并将call site的入口指向ResolveHeap，此时不再单独判断某个类型的方法表(MT)，这也是为何在文章开头的Demo里为何2种写法的性能是有差别的原因了。</h5><blockquote>
+<h2 id="参考文档："><a href="#参考文档：" class="headerlink" title="参考文档："></a>参考文档：</h2><p><a href="https://github.com/dotnet/coreclr/blob/master/Documentation/botr/virtual-stub-dispatch.md" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/Documentation/botr/virtual-stub-dispatch.md</a><br><a href="http://blogs.microsoft.co.il/sasha/2012/03/15/virtual-method-dispatch-and-object-layout-changes-in-clr-40/" target="_blank" rel="external">http://blogs.microsoft.co.il/sasha/2012/03/15/virtual-method-dispatch-and-object-layout-changes-in-clr-40/</a><br><a href="https://github.com/dotnet/coreclr/blob/master/src/vm/methodtable.h" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/src/vm/methodtable.h</a><br><a href="https://www.microsoft.com/china/MSDN/library/netFramework/netframework/JITCompiler.mspx?mfr=true" target="_blank" rel="external">https://www.microsoft.com/china/MSDN/library/netFramework/netframework/JITCompiler.mspx?mfr=true</a></p>
+</blockquote>
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      <a href="/CLR/interface-polymorphism/" class="archive-article-date">
+  	<time datetime="2017-02-27T01:05:00.000Z" itemprop="datePublished"><i class="icon-clock"></i>2017-02-27</time>
+</a>
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags"></i>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NET/">.NET</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CLR/">CLR</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JIT/">JIT</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RunTime/">RunTime</a></li></ul>
+	</div>
+
+      
+	<div class="article-category tagcloud">
+	<i class="icon-price-tags"></i>
+	<a class="article-category-link" href="/categories/CLR/">CLR</a>
+	</div>
+
+
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+  
+<nav id="article-nav">
+  
+  
+    <a href="/CLR/inheritance-polymorphism/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">CLR运行时细节 - 继承多态的实现</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+
+
+
+
+
+
+
+
+
+      </div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2017 chengl
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    <script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: false,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false,
+		root: "/",
+		innerArchive: true
+	}
+</script>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?f685bce203ffb2e96d5a6473d1252d95";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+<script src="/./main.js"></script>
+
+
+    
+<div class="tools-col">
+  <ul class="btn-wrap">
+    
+      <li class="chose" data-hook="tools-section-all"><span class="text">全部</span><i class="icon-book"></i></li>
+    
+    
+      <li data-hook="tools-section-tag"><span class="text">标签</span><i class="icon-price-tags"></i></li>
+    
+    
+    
+      <li data-hook="tools-section-me"><span class="text">我</span><i class="icon-smile"></i></li>
+    
+  </ul>
+  <div class="tools-wrap">
+    
+    	<section class="tools-section tools-section-all chose">
+    	</section>
+    
+
+    
+    	<section class="tools-section tools-section-tag">
+    			<div class="widget tagcloud" id="js-tagcloud">
+    				<a href="/tags/NET/" style="font-size: 10px;">.NET</a> <a href="/tags/CLR/" style="font-size: 10px;">CLR</a> <a href="/tags/JIT/" style="font-size: 10px;">JIT</a> <a href="/tags/RunTime/" style="font-size: 10px;">RunTime</a>
+    			</div>
+    	</section>
+    
+
+    
+
+    
+    	<section class="tools-section tools-section-me">
+  	  	
+  	  		<div class="aboutme-wrap" id="js-aboutme">espider@126.com</div>
+  	  	
+    	</section>
+    
+  </div>
+  
+</div>
+    <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+  </div>
+</body>
+</html>
