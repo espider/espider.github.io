@@ -141,6 +141,166 @@
       <div class="body-wrap">
         
   
+    <article id="post-dotnet-core-lldb" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/NET-Core/dotnet-core-lldb/">快速搭建本地 .NET Core 运行时调试环境</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <!-- # 快速搭建本地 .NET Core 运行时调试环境 -->
+<p>需要的软件环境：</p>
+<ul>
+<li>Oracle VM VirtualBox</li>
+<li>CentOS 7</li>
+<li>llvm lldb 3.6.0 (3.5.0我试过 dumpobj时候一直报无效参数 Invalid parameter T_T)</li>
+</ul>
+<p>先在VirtualBox创建新虚机：<br>一路 Next ，文件位置可以自定义下(默认是在Users/当前用户/.. 目录下)<br>创建完选在<br>设置 – 存储 里 选下 CentOS7的镜像文件<br>设置 – 网络里选 桥接网卡<br>然后启动虚机 开始安装CentOS7</p>
+<p><img src="/img/core01/1-1.png" alt="" title="VirtualBox Step1"></p>
+<p>安装过程基本都是默认选项，键盘、时区选下、软件选择 选 最小安装(Minimal Install)<br>开始安装，设置下root账号的密码</p>
+<p><img src="/img/core01/1-2.png" alt="" title="VirtualBox Step2"></p>
+<ul>
+<li>下面所有命令都是在root权限下完成的</li>
+</ul>
+<p>安装后重启<br>root登录后先改网卡配置：<br>/etc/sysconfig/network-scripts/ 目录下会有个 ifcfg-e开头的文件，修改其内容：onboot=no改成onboot=yes<br>然后用 ifup 命令激活网口</p>
+<p><img src="/img/core01/1-3.png" alt="" title="CentOS7 Step1"></p>
+<p><img src="/img/core01/1-4.png" alt="" title="CentOS7 Step2"></p>
+<p>安装net-tools<br><code>yum -y install net-tools</code><br>ifconfig 查看下IP地址</p>
+<p><img src="/img/core01/1-5.png" alt="" title="CentOS7 ifconfig"></p>
+<p>有了IP后就可以用自己习惯的ssh工具连接啦，比如：PuTTY</p>
+<p>默认防火墙 <code>systemctl disable firewalld.service</code><br>重启 <code>reboot</code><br>验证状态 <code>firewall-cmd --state</code></p>
+<p>安装 dotnet SDK<br><code>mkdir /home/tool &amp;&amp; cd /home/tool</code></p>
+<p>下SDK<br><code>curl -sSL -o dotnet-1.1.tar.gz https://go.microsoft.com/fwlink/?LinkID=835019</code></p>
+<p>创建目录 解压<br><code>mkdir -p /opt/dotnet &amp;&amp; tar zxf dotnet-1.1.tar.gz -C /opt/dotnet</code></p>
+<p>创建链接<br><code>ln -s /opt/dotnet/dotnet /usr/local/bin</code></p>
+<p>验证 <code>dotnet --info</code></p>
+<p>如果验证出现如下错误<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">Failed to load /opt/dotnet/shared/Microsoft.NETCore.App/1.1.0/libcoreclr.so, error: libunwind.so.8: cannot open shared object file: No such file or directory</div><div class="line">Failed to bind to CoreCLR at &apos;/opt/dotnet/shared/Microsoft.NETCore.App/1.1.0/libcoreclr.so&apos;</div></pre></td></tr></table></figure></p>
+<p>则安装：<code>yum install libunwind</code></p>
+<p>如果验证出现如下错误<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">Failed to initialize CoreCLR, HRESULT: 0x80131500</div></pre></td></tr></table></figure></p>
+<p>则安装：<code>yum install icu</code></p>
+<p>成功则会有版本信息：</p>
+<p><img src="/img/core01/1-6.png" alt="" title="dotnet --info"></p>
+<p><strong>接下来安装llvm lldb</strong></p>
+<p>相关依赖安装：</p>
+<ul>
+<li><code>yum -y install wget</code></li>
+<li><code>yum install gcc</code></li>
+<li><code>yum install gcc-c++</code></li>
+<li><code>yum install swig python-devel libedit-devel</code></li>
+</ul>
+<p>下载llvm的源代码:</p>
+<ul>
+<li><code>wget http://releases.llvm.org/3.6.0/llvm-3.6.0.src.tar.xz</code></li>
+<li><code>tar -xf llvm-3.6.0.src.tar.xz</code></li>
+<li><code>mv llvm-3.6.0.src llvm</code></li>
+</ul>
+<p>下载clang的源代码:</p>
+<ul>
+<li><code>cd llvm/tools</code></li>
+<li><code>wget http://releases.llvm.org/3.6.0/cfe-3.6.0.src.tar.xz</code> </li>
+<li><code>tar -xf cfe-3.6.0.src.tar.xz</code></li>
+<li><code>mv cfe-3.6.0.src clang</code></li>
+</ul>
+<p>下载lldb的源代码:</p>
+<ul>
+<li><code>wget http://releases.llvm.org/3.6.0/lldb-3.6.0.src.tar.xz</code></li>
+<li><code>tar -xf lldb-3.6.0.src.tar.xz</code></li>
+<li><code>mv lldb-3.6.0.src lldb</code></li>
+</ul>
+<p>下载compiler-rt的源代码:</p>
+<ul>
+<li><code>cd ../projects</code></li>
+<li><code>wget http://releases.llvm.org/3.6.0/compiler-rt-3.6.0.src.tar.xz</code></li>
+<li><code>tar -xf compiler-rt-3.6.0.src.tar.xz</code></li>
+<li><code>mv compiler-rt-3.6.0.src compiler-rt</code></li>
+</ul>
+<p>下载libcxxabi的源代码:</p>
+<ul>
+<li><code>wget http://releases.llvm.org/3.6.0/libcxxabi-3.6.0.src.tar.xz</code></li>
+<li><code>tar -xf libcxxabi-3.6.0.src.tar.xz</code></li>
+<li><code>mv libcxxabi-3.6.0.src libcxxabi</code></li>
+</ul>
+<p>下载libcxx的源代码:</p>
+<ul>
+<li><code>wget http://releases.llvm.org/3.6.0/libcxx-3.6.0.src.tar.xz</code></li>
+<li><code>tar -xf  libcxx-3.6.0.src.tar.xz</code></li>
+<li><code>mv libcxx-3.6.0.src libcxx</code></li>
+</ul>
+<p>配置编译选项:</p>
+<ul>
+<li><code>cd ..</code></li>
+<li><code>./configure --enable-optimized CC=gcc CXX=g++</code></li>
+</ul>
+<p>编译llvm:</p>
+<ul>
+<li><code>make</code></li>
+</ul>
+<p>漫长的等待… … …</p>
+<p>如果编译过程这样的错误<code>c++: internal compiler error: Killed (program cc1plus</code> 则增加swap分区文件大小后再试：<br><code>dd if=/dev/zero of=/swapfile bs=1k count=2048000</code><br><code>mkswap /swapfile</code><br><code>swapon /swapfile</code></p>
+<p>编译成功后  只安装lldb，进入llvm/tools/lldb中运行 <code>make install</code></p>
+<p><strong>创建一个.net core web站点</strong><br><code>mkdir -p /home/www/core01 &amp;&amp; cd /home/www/core01</code></p>
+<p><code>dotnet new -t web</code><br><code>dotnet restore</code><br><code>ASPNETCORE_URLS=&quot;http://*:5000&quot; dotnet run</code></p>
+<p><img src="/img/core01/1-7.png" alt="" title="dotnet run"></p>
+<p><strong>启动lldb 附加进程 加载SOS调试扩展</strong></p>
+<p><img src="/img/core01/1-8.png" alt="" title="lldb libsosplugin.so"></p>
+<p><strong>执行SOS命令：soshelp</strong></p>
+<p><img src="/img/core01/1-9.png" alt="" title="lldb soshelp"></p>
+<p><strong>看到熟悉的托管调试命令 甚是亲切 赶紧试试</strong></p>
+<p><img src="/img/core01/1-10.png" alt="" title="lldb sos clrthreads"></p>
+<p><img src="/img/core01/1-11.png" alt="" title="lldb sos eeheap -gc"></p>
+<p><img src="/img/core01/1-12.png" alt="" title="lldb sos dumpheap -stat"></p>
+<p><img src="/img/core01/1-13.png" alt="" title="lldb sos dumpobj"></p>
+<p>此文只是简单快速的搭建 .NET Core 在CentOS7下运行时的调试环境，后续再总结 Windbg 和 LLDB 之间的命令习惯差异。</p>
+<blockquote>
+<h2 id="参考文档："><a href="#参考文档：" class="headerlink" title="参考文档："></a>参考文档：</h2><p><a href="https://github.com/dotnet/coreclr/blob/master/Documentation/building/debugging-instructions.md" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/Documentation/building/debugging-instructions.md</a><br><a href="http://www.cnblogs.com/dudu/p/build-coreclr-on-centos.html" target="_blank" rel="external">http://www.cnblogs.com/dudu/p/build-coreclr-on-centos.html</a><br><a href="http://www.cnblogs.com/dudu/p/4294374.html" target="_blank" rel="external">http://www.cnblogs.com/dudu/p/4294374.html</a></p>
+</blockquote>
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      <a href="/NET-Core/dotnet-core-lldb/" class="archive-article-date">
+  	<time datetime="2017-02-28T16:00:00.000Z" itemprop="datePublished"><i class="icon-clock"></i>2017-03-01</time>
+</a>
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags"></i>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NET-Core/">.NET Core</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Debug/">Debug</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RunTime/">RunTime</a></li></ul>
+	</div>
+
+      
+	<div class="article-category tagcloud">
+	<i class="icon-price-tags"></i>
+	<a class="article-category-link" href="/categories/NET-Core/">.NET Core</a>
+	</div>
+
+
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+
+
+
+
+
+
+
+
+
+  
     <article id="post-interface-polymorphism" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -581,7 +741,7 @@ var _hmt = _hmt || [];
     
     	<section class="tools-section tools-section-tag">
     			<div class="widget tagcloud" id="js-tagcloud">
-    				<a href="/tags/NET/" style="font-size: 10px;">.NET</a> <a href="/tags/CLR/" style="font-size: 10px;">CLR</a> <a href="/tags/JIT/" style="font-size: 10px;">JIT</a> <a href="/tags/RunTime/" style="font-size: 10px;">RunTime</a>
+    				<a href="/tags/NET/" style="font-size: 15px;">.NET</a> <a href="/tags/NET-Core/" style="font-size: 10px;">.NET Core</a> <a href="/tags/CLR/" style="font-size: 15px;">CLR</a> <a href="/tags/Debug/" style="font-size: 10px;">Debug</a> <a href="/tags/JIT/" style="font-size: 15px;">JIT</a> <a href="/tags/RunTime/" style="font-size: 20px;">RunTime</a>
     			</div>
     	</section>
     
