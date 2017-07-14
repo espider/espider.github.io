@@ -162,10 +162,7 @@
         <!-- # lldb 调试 linux下 .net Core 总结及开源扩展 yinuo -->
 <p>相信很多朋友在跟随微软.net core 从windows平台迁移至linux平台的过程中遇到很多别扭的地方，<br>这里我只聊聊 运行时 调试的那些事儿。</p>
 <ul>
-<li><p>首先从工具上来讲Windows上的windbg肯定是运行时的首选调试工具(因为有对应版本的SOS.dll)，在linux平台运行时调试需要切换到<strong>lldb (Only lldb is supported by the SOS plugin. gdb can be used to debug the coreclr code but with no SOS support.)</strong><br>调试器的原理和功能基本一样，但细节到某个功能的命令自然会有区别，尤其是熟练了其中1个的命令之后(比如之前在看汇编的时候是Intel格式，现在要适用AT&amp;T格式)…</p>
-</li>
-<li><p>软件环境 CentOS7 lldb-3.6.0 python-2.7.5</p>
-</li>
+<li>首先从工具上来讲Windows上的windbg肯定是运行时的首选调试工具(因为有对应版本的SOS.dll)，在linux平台运行时调试需要切换到<strong>lldb (Only lldb is supported by the SOS plugin. gdb can be used to debug the coreclr code but with no SOS support.)</strong><br>调试器的原理和功能基本一样，但细节到某个功能的命令自然会有区别，尤其是熟练了其中1个的命令之后(比如之前在看汇编的时候是Intel格式，现在要适用AT&amp;T格式)…</li>
 </ul>
 <p>这里先总结一些个人常用的命令在 windbg下和lldb下的对比：</p>
 <ul>
@@ -223,6 +220,8 @@
 </ul>
 <p>这里先介绍下自己写的开源lldb调试.net Core扩展模块 <a href="https://github.com/espider/yinuo" target="_blank" rel="external"><strong>Yinuo</strong></a><br>在使用lldb调试linux .net Core程序的过程中，有很多不适应的地方，比如遍历并查看所有线程的托管栈回溯 在windbg下可以<code>~*e !clrstack</code> 在lldb里虽然有<code>bt all</code>和<code>clrstack</code> 但是却只能手动切换单个线程再回溯，没有办法结合到一起，还有一个原因是lldb内命令输出的内容颜色统一，不太好区分重点关注的点，比如线程回溯比较关注方法名，托管对象转储比较关注内部对象地址等等，lldb的好处是支持python或者c++接口，可以通过接口方式写lldb的扩展来辅助我们调试过程，提高调试效率。<br>下面介绍下调试扩展 Yinuo 的加载过程：</p>
 <ul>
+<li><p>以下的软件环境 CentOS7，lldb-3.6.0，python-2.7.5</p>
+</li>
 <li><p>首先git下载模块 <strong><code>git clone https://github.com/espider/yinuo</code></strong><br>目录没有要求，但要记得，因为加载模块的时候要知道在哪。</p>
 </li>
 <li><p>启动lldb 并附加被调试的进程 <strong><code>(lldb) attach -p PID</code></strong></p>
