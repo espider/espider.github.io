@@ -162,7 +162,10 @@
         <!-- # lldb 调试 linux下 .net Core 总结及开源扩展 yinuo -->
 <p>相信很多朋友在跟随微软.net core 从windows平台迁移至linux平台的过程中遇到很多别扭的地方，<br>这里我只聊聊 运行时 调试的那些事儿。</p>
 <ul>
-<li>首先从工具上来讲Windows上的windbg肯定是运行时的首选调试工具(因为有对应版本的SOS.dll)，在linux平台运行时调试需要切换到<strong>lldb (Only lldb is supported by the SOS plugin. gdb can be used to debug the coreclr code but with no SOS support.)</strong><br>调试器的原理和功能基本一样，但细节到某个功能的命令自然会有区别，尤其是熟练了其中1个的命令之后(比如之前在看汇编的时候是Intel格式，现在要适用AT&amp;T格式)…</li>
+<li><p>首先从工具上来讲Windows上的windbg肯定是运行时的首选调试工具(因为有对应版本的SOS.dll)，在linux平台运行时调试需要切换到<strong>lldb (Only lldb is supported by the SOS plugin. gdb can be used to debug the coreclr code but with no SOS support.)</strong><br>调试器的原理和功能基本一样，但细节到某个功能的命令自然会有区别，尤其是熟练了其中1个的命令之后(比如之前在看汇编的时候是Intel格式，现在要适用AT&amp;T格式)…</p>
+</li>
+<li><p>软件环境 CentOS7 lldb-3.6.0 python-2.7.5</p>
+</li>
 </ul>
 <p>这里先总结一些个人常用的命令在 windbg下和lldb下的对比：</p>
 <ul>
