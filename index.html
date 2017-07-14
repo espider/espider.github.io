@@ -141,6 +141,178 @@
       <div class="body-wrap">
         
   
+    <article id="post-lldb-dotnet-core-python" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/NET-Core/lldb-dotnet-core-python/">lldb 调试 linux下 .net Core 总结及开源扩展 yinuo</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <!-- # lldb 调试 linux下 .net Core 总结及开源扩展 yinuo -->
+<p>相信很多朋友在跟随微软.net core 从windows平台迁移至linux平台的过程中遇到很多别扭的地方，<br>这里我只聊聊 运行时 调试的那些事儿。</p>
+<ul>
+<li>首先从工具上来讲Windows上的windbg肯定是运行时的首选调试工具(因为有对应版本的SOS.dll)，在linux平台运行时调试需要切换到<strong>lldb (Only lldb is supported by the SOS plugin. gdb can be used to debug the coreclr code but with no SOS support.)</strong><br>调试器的原理和功能基本一样，但细节到某个功能的命令自然会有区别，尤其是熟练了其中1个的命令之后(比如之前在看汇编的时候是Intel格式，现在要适用AT&amp;T格式)…</li>
+</ul>
+<p>这里先总结一些个人常用的命令在 windbg下和lldb下的对比：</p>
+<ul>
+<li><strong>非托管命令:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>非托管命令</th>
+<th>lldb</th>
+<th>windbg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>列出当前模块</td>
+<td>image list</td>
+<td>lmf</td>
+</tr>
+<tr>
+<td>当前线程</td>
+<td>thread list</td>
+<td>~</td>
+</tr>
+<tr>
+<td>当前线程栈回溯</td>
+<td>thread backtrace</td>
+<td>kp</td>
+</tr>
+<tr>
+<td>所有线程栈回溯</td>
+<td>thread backtrace all</td>
+<td>~* kp</td>
+</tr>
+<tr>
+<td>切换线程</td>
+<td>thread select 2</td>
+<td>~2s kp</td>
+</tr>
+<tr>
+<td>查看寄存器</td>
+<td>re r</td>
+<td>r</td>
+</tr>
+<tr>
+<td>查看内存(8字节)</td>
+<td>memory read –size 8 –format x address</td>
+<td>dq address</td>
+</tr>
+</tbody>
+</table>
+<p>LLDB同GDB的命令对比：<a href="https://lldb.llvm.org/lldb-gdb.html" target="_blank" rel="external">https://lldb.llvm.org/lldb-gdb.html</a></p>
+<ul>
+<li><strong>托管命令:</strong>  </li>
+</ul>
+<p>这里先介绍下自己写的开源lldb调试.net Core扩展模块 <a href="https://github.com/espider/yinuo" target="_blank" rel="external"><strong>Yinuo</strong></a><br>在使用lldb调试linux .net Core程序的过程中，有很多不适应的地方，比如遍历并查看所有线程的托管栈回溯 在windbg下可以<code>~*e !clrstack</code> 在lldb里虽然有<code>bt all</code>和<code>clrstack</code> 但是却只能手动切换单个线程再回溯，没有办法结合到一起，还有一个原因是lldb内命令输出的内容颜色统一，不太好区分重点关注的点，比如线程回溯比较关注方法名，托管对象转储比较关注内部对象地址等等，lldb的好处是支持python或者c++接口，可以通过接口方式写lldb的扩展来辅助我们调试过程，提高调试效率。<br>下面介绍下调试扩展 Yinuo 的加载过程：</p>
+<ul>
+<li><p>首先git下载模块 <strong><code>git clone https://github.com/espider/yinuo</code></strong><br>目录没有要求，但要记得，因为加载模块的时候要知道在哪。</p>
+</li>
+<li><p>启动lldb 并附加被调试的进程 <strong><code>(lldb) attach -p PID</code></strong></p>
+</li>
+<li><p>加载Yinuo调试模块 <strong><code>(lldb) command script import ~/yinuo/ynlldb.py</code></strong> 之前git下来的目录里的python文件</p>
+</li>
+</ul>
+<p><img src="/img/core02/1.png" alt="" title="load yinuo python module">  </p>
+<ul>
+<li>成功加载ynlldb.py后可以 <strong><code>help</code></strong> 看下当前注册进来的命令，都以 yn_ 为前缀，加载模块的时候会判断当前的.net Core版本号，并自动加载对应版本的调试插件libsosplugin.so</li>
+</ul>
+<p><img src="/img/core02/2.png" alt="" title="yinuo module register commands"> </p>
+<h3 id="接下来介绍下当前注册进lldb的辅助调试命令"><a href="#接下来介绍下当前注册进lldb的辅助调试命令" class="headerlink" title="接下来介绍下当前注册进lldb的辅助调试命令"></a>接下来介绍下当前注册进lldb的辅助调试命令</h3><ul>
+<li><strong><code>yn_heap_dump</code></strong><br>查看当前托管堆信息命令，以色块和色块的比例直观的感受 Gen 0,1,2 LOH 在同一个堆内的比例 以及其实际大小(<strong>这里的比例按托管堆的地址空间计算，并没有排除Free的和Gen0没有使用的地址空间，由于比例可能相去甚远所以有可能看不到某个堆的色块</strong>)</li>
+</ul>
+<p><img src="/img/core02/3.png" alt="" title="yn_heap_dump command output"> </p>
+<ul>
+<li><strong><code>yn_object_dump</code></strong><br>转储托管对象，可以根据类型的方法表、类型名、对象地址 进行批量或者单个转储，同时计算对象(按方法表或类型的话针对每1个单独对象)所属托管堆的位置Gen 0,1,2,LOH，并统计4类堆内的数量。<br>支持选项和参数<ul>
+<li><strong>–methodtable/-m</strong> 转储此方法表的所有对象，后跟方法表地址；</li>
+<li><strong>–type/-t</strong> 转储此类型名的所有对象，后跟类型名(同方法表选项互斥 2选1)；</li>
+<li><strong>–offset/-o</strong> 转储对象的同时是否深入转储其内部偏移对象，后跟该对象的偏移量(目前只支持1级内部偏移)</li>
+<li><strong>–address/-a</strong> 转储单个对象，后跟对象地址</li>
+<li><strong>–dumpobj/-d</strong> 是否转储对象，默认为True，如果不转储则只返回对象地址；</li>
+<li><strong>–gen/-g</strong> 是否显示对象所在的堆Gen0,1,2,LOH，默认True；</li>
+</ul>
+</li>
+</ul>
+<p>例如想要查看 类型Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.Frame`1[[Microsoft.AspNetCore.Hosting.Internal.HostingApplication+Context, Microsoft.AspNetCore.Hosting]] 方法表地址 <code>00007ff8711df620</code> 可以这样写转储命令：  </p>
+<p><img src="/img/core02/4-1.png" alt="" title="yn_object_dump command output with methodtable"> </p>
+<p><strong>这里会对输出内容做下颜色处理，比如我们比较关心其内部成员的Value这列，如果是地址的话会显示成黄色，方便调试时候的快速定位。</strong></p>
+<p>如果想要转储某个对象可以这样写，根据对象地址：  </p>
+<p><img src="/img/core02/4-4.png" alt="" title="yn_object_dump command output with object address"> </p>
+<p>发现对象内的某个成员比较感兴趣，例如 刚刚的对象内偏移 <code>0xe0</code> 位置是 <code>RawTarget</code> </p>
+<p><img src="/img/core02/4-5.png" alt="" title="yn_object_dump RawTarget"></p>
+<p>想对其进行偏移转储 可以这样写：</p>
+<p><img src="/img/core02/4-3.png" alt="" title="yn_object_dump with offset"></p>
+<p><img src="/img/core02/4-2.png" alt="" title="yn_object_dump with offset output"></p>
+<ul>
+<li><strong><code>yn_thread_clrstack</code></strong><br>显示某个线程或者所有线程的托管栈回溯，不指定选项 <strong>–thread/-t</strong> 的话默认显示当前线程的托管栈回溯， <strong>-t</strong> 跟线程index可以回溯指定线程，或者 跟 <strong>all</strong>，来批量显示所有线程的托管栈回溯，参数 <strong>-a</strong> 可选(此为SOS命令clrstack可选参数)  </li>
+</ul>
+<p><img src="/img/core02/5.png" alt="" title="yn_thread_clrstack all threads"></p>
+<p><img src="/img/core02/5-1.png" alt="" title="yn_thread_clrstack all threads -a"></p>
+<p>这里也对输出的内容做了颜色处理，比如IP指令指针列和CallSite是我们比较关注的，这里分别用黄色和绿色标注。</p>
+<ul>
+<li><strong><code>yn_thread_pe</code></strong><br>显示某个线程或者所有线程托管异常，选项同 yn_thread_clrstack 一样  </li>
+</ul>
+<p><img src="/img/core02/6.png" alt="" title="yn_thread_pe all threads"></p>
+<ul>
+<li><strong><code>yn_transfer</code></strong><br>此命令只用于转移执行其他lldb命令，因为yinuo项目调试的时候会在当前目录生成一个log文件(ynlldb.log)会把所有执行的yinuo命令及输出写入日志便于以后的查询，使用例如：<code>yn_transfer dumpheap -stat</code> 会执行 <code>dumpheap -stat</code> 并把结果输出到终端和日志文件里。</li>
+</ul>
+<ul>
+<li><strong>Yinuo</strong> 项目 License 采用 BSD，大家有兴趣可以自己调整或者联系我共同维护，实现自己的调试命令比较简单，git项目内的 commandlist 目录，所有自动注册的调试命令都在这里以，自命名.py文件即可，内容例子及说明如下：</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div><div class="line">67</div><div class="line">68</div><div class="line">69</div></pre></td><td class="code"><pre><div class="line"></div><div class="line"><span class="comment">#!/usr/bin/python</span></div><div class="line"><span class="comment"># coding:utf-8</span></div><div class="line"></div><div class="line"><span class="keyword">import</span> lldb</div><div class="line"><span class="keyword">import</span> commandlist.ynbase <span class="keyword">as</span> yn</div><div class="line"><span class="keyword">from</span> util.colorstyle <span class="keyword">import</span> *</div><div class="line"><span class="keyword">from</span> util.exportcontent <span class="keyword">import</span> *</div><div class="line"></div><div class="line"><span class="string">"""这里把自定义类型注册进来等待加载的时候自动注册"""</span></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">register_lldb_commands</span><span class="params">()</span>:</span></div><div class="line">    <span class="keyword">return</span> [</div><div class="line">        YNTransfer()</div><div class="line">    ]</div><div class="line"></div><div class="line"><span class="string">"""自定义类型继承自yn.YNCommand即可"""</span></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">YNTransfer</span><span class="params">(yn.YNCommand)</span>:</span></div><div class="line">    <span class="string">""" transfer lldb command and exe it for log """</span></div><div class="line"></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">pass</span></div><div class="line"></div><div class="line">    <span class="string">"""这个是注册到lldb里的命令名字"""</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">name</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="comment"># register function name in lldb</span></div><div class="line">        <span class="keyword">return</span> <span class="string">'yn_transfer'</span></div><div class="line"></div><div class="line">    <span class="string">"""如果有选项的话在这里定义，基于python argparse模块实现的 """</span> </div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">options</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">return</span> [</div><div class="line">        ]</div><div class="line"></div><div class="line">    <span class="string">"""描述信息"""</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">description</span><span class="params">(self)</span>:</span></div><div class="line">        <span class="keyword">return</span> <span class="string">'Transfer lldb command for log,e.g. arguments: dumpheap -stat'</span></div><div class="line"></div><div class="line">    <span class="string">"""这里是实际命令的具体实现了"""</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">run</span><span class="params">(self, options, arguments)</span>:</span></div><div class="line">        target = lldb.debugger.GetSelectedTarget()</div><div class="line">        <span class="keyword">if</span> target:</div><div class="line">            <span class="keyword">if</span> arguments:</div><div class="line">                YNTransfer.handle_command(arguments)</div><div class="line">            <span class="keyword">else</span>:</div><div class="line">                export_content(<span class="string">'    no arguments in yn_transfer.'</span>)</div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            export_content(<span class="string">'    no target in current debugger.'</span>)</div><div class="line"></div><div class="line"><span class="meta">    @staticmethod</span></div><div class="line">    <span class="function"><span class="keyword">def</span> <span class="title">handle_command</span><span class="params">(args)</span>:</span></div><div class="line">        (ci, result) = yn.run_log_command(</div><div class="line">            <span class="string">" "</span> + (<span class="string">" "</span>.join(args) <span class="keyword">if</span> len(args) &gt; <span class="number">0</span> <span class="keyword">else</span> <span class="string">''</span>))</div><div class="line">        success = result.Succeeded()</div><div class="line">        <span class="keyword">if</span> success:</div><div class="line">            output = result.GetOutput()</div><div class="line">            contents = output.strip()</div><div class="line">            lines = contents.splitlines(<span class="keyword">False</span>)</div><div class="line">            <span class="keyword">for</span> i <span class="keyword">in</span> range(len(lines)):</div><div class="line">                export_content(<span class="string">'    %s'</span> % lines[i])</div><div class="line">        <span class="keyword">else</span>:</div><div class="line">            export_content(</div><div class="line">                <span class="string">'    error="%s"'</span> %</div><div class="line">                use_style_level(</div><div class="line">                    important_level[<span class="string">'high2'</span>],</div><div class="line">                    result.GetError()))</div><div class="line">        export_content(</div><div class="line">            <span class="string">'    %s   '</span> %</div><div class="line">            use_style_level(</div><div class="line">                important_level[<span class="string">'low2'</span>],</div><div class="line">                <span class="string">'-------------'</span>))</div></pre></td></tr></table></figure>
+<blockquote>
+<h2 id="参考文档："><a href="#参考文档：" class="headerlink" title="参考文档："></a>参考文档：</h2><p><a href="https://github.com/dotnet/coreclr/blob/master/Documentation/building/debugging-instructions.md" target="_blank" rel="external">https://github.com/dotnet/coreclr/blob/master/Documentation/building/debugging-instructions.md</a><br><a href="https://lldb.llvm.org/python-reference.html" target="_blank" rel="external">https://lldb.llvm.org/python-reference.html</a><br><a href="https://github.com/llvm-mirror/lldb" target="_blank" rel="external">https://github.com/llvm-mirror/lldb</a><br><a href="https://github.com/facebook/chisel" target="_blank" rel="external">https://github.com/facebook/chisel</a>  </p>
+</blockquote>
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      <a href="/NET-Core/lldb-dotnet-core-python/" class="archive-article-date">
+  	<time datetime="2017-07-12T16:00:00.000Z" itemprop="datePublished"><i class="icon-clock"></i>2017-07-13</time>
+</a>
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags"></i>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NET-Core/">.NET Core</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/LLDB/">LLDB</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Linux/">Linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Python/">Python</a></li></ul>
+	</div>
+
+      
+	<div class="article-category tagcloud">
+	<i class="icon-price-tags"></i>
+	<a class="article-category-link" href="/categories/NET-Core/">.NET Core</a>
+	</div>
+
+
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+
+
+
+
+
+
+
+
+
+  
     <article id="post-dotnet-core-lldb" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -741,7 +913,7 @@ var _hmt = _hmt || [];
     
     	<section class="tools-section tools-section-tag">
     			<div class="widget tagcloud" id="js-tagcloud">
-    				<a href="/tags/NET/" style="font-size: 15px;">.NET</a> <a href="/tags/NET-Core/" style="font-size: 10px;">.NET Core</a> <a href="/tags/CLR/" style="font-size: 15px;">CLR</a> <a href="/tags/Debug/" style="font-size: 10px;">Debug</a> <a href="/tags/JIT/" style="font-size: 15px;">JIT</a> <a href="/tags/RunTime/" style="font-size: 20px;">RunTime</a>
+    				<a href="/tags/NET/" style="font-size: 16.67px;">.NET</a> <a href="/tags/NET-Core/" style="font-size: 13.33px;">.NET Core</a> <a href="/tags/CLR/" style="font-size: 16.67px;">CLR</a> <a href="/tags/Debug/" style="font-size: 10px;">Debug</a> <a href="/tags/JIT/" style="font-size: 16.67px;">JIT</a> <a href="/tags/LLDB/" style="font-size: 10px;">LLDB</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/Python/" style="font-size: 10px;">Python</a> <a href="/tags/RunTime/" style="font-size: 20px;">RunTime</a>
     			</div>
     	</section>
     
